@@ -1,0 +1,29 @@
+# --- Python Specific ---
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+
+# --- uv & Virtual Environments ---
+# uv uses .venv by default
+.venv/
+uv.lock
+
+# --- Project Data & Config ---
+# เก็บไฟล์ IGC ไว้ในเครื่อง ไม่ต้อง Upload ขึ้น Git
+data/*.igc
+# กรณีมีไฟล์ config ส่วนตัว หรือไฟล์ผลลัพธ์
+results/
+*.csv
+
+# --- IDE & OS Specific ---
+.vscode/
+.idea/
+.DS_Store
+# สำหรับ CachyOS/Linux
+*~
+*.swp
+
+# --- Analysis & Notebooks ---
+.ipynb_checkpoints/

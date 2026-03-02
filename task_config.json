@@ -1,0 +1,19 @@
+{
+    "task_name": "RASAT/FAI Triangle Challenge",
+    "coordinates": {
+        "start_point": [13.16603, 101.01902],
+        "finish_point": [13.15215, 101.03399],
+        "sp_radius_meters": 200,
+        "fp_radius_meters": 200
+    },
+    "scoring_params": {
+        "max_distance_km": 50.0,
+        "hidden_gate_interval_km": 1.0,
+        "hidden_gate_radius_meters": 200,
+        "fai_multiplier": 1.5,
+        "flat_multiplier": 1.0
+    },
+    "constraints": {
+        "min_fai_percent": 0.28
+    }
+}
