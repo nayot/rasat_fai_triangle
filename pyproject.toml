@@ -1,11 +1,13 @@
 [project]
-name = "github"
+name = "rasat-fai-triangle"
 version = "0.1.0"
-description = "Add your description here"
+description = "ระบบวิเคราะห์ผลการบิน Paramotor RASAT/FAI"
 readme = "README.md"
-requires-python = ">=3.14"
+# แก้ไขจาก >=3.14 เป็น >=3.11 เพื่อให้รันใน Docker และ CachyOS ได้
+requires-python = ">=3.11" 
 dependencies = [
     "geopy>=2.4.1",
-    "matplotlib>=3.10.8",
-    "numpy>=2.4.2",
+    "matplotlib>=3.9.0",
+    "numpy>=1.26.0", # ปรับ numpy ให้เสถียรกับ Python 3.11
+    "pandas>=2.1.0", # เพิ่มสำหรับจัดการไฟล์ CSV สรุปผล
 ]
