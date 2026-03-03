@@ -14,7 +14,7 @@ WORKDIR /app
 # คัดลอกไฟล์จัดการ dependencies (จากโปรเจค uv ของคุณ)
 COPY pyproject.toml .
 # หากมี uv.lock ให้ปลดคอมเมนต์บรรทัดล่าง
-# COPY uv.lock .
+COPY uv.lock .
 
 # ติดตั้ง Library ที่จำเป็น
 RUN pip install --no-cache-dir .
