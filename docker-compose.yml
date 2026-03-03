@@ -1,13 +1,10 @@
-version: '3.8'
-
 services:
   rasat-analyzer:
     build: .
     container_name: rasat_scoring
+    environment:
+      - DISPLAY=${DISPLAY}
     volumes:
       - .:/app
-      # เชื่อมต่อ X11 เพื่อให้แสดงผล GUI บนหน้าจอเครื่องได้
       - /tmp/.X11-unix:/tmp/.X11-unix
-    environment:
-      - DISPLAY=${DISPLAY:-:0}
-    network_mode: "host"
+    network_mode: "host" # สำหรับ Linux จะช่วยให้ต่อ Display ง่ายขึ้น
