@@ -1,8 +1,8 @@
 {
     "task_name": "RASAT/FAI Triangle Challenge",
     "coordinates": {
-        "start_point": [14.340440, 100.613250],
-        "finish_point": [14.340440, 100.613300],
+        "start_point": [14.422020, 100.499577],
+        "finish_point": [14.422020, 100.499577],
         "sp_radius_meters": 200,
         "fp_radius_meters": 200
     },
