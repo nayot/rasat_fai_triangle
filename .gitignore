@@ -1,29 +1,39 @@
-# --- Python Specific ---
+# --- Python & Environment ---
 __pycache__/
 *.py[cod]
 *$py.class
-.pytest_cache/
-.mypy_cache/
-
-# --- uv & Virtual Environments ---
-# uv uses .venv by default
 .venv/
-uv.lock
+venv/
+ENV/
+.env
+.pytest_cache/
 
-# --- Project Data & Config ---
-# เก็บไฟล์ IGC ไว้ในเครื่อง ไม่ต้อง Upload ขึ้น Git
+# --- Project Specific Data ---
+# ไม่เก็บไฟล์ IGC ของนักกีฬาและผลลัพธ์ที่สร้างขึ้น
+igcFiles/*.igc
+results_track_analysis/*.png
+competition_results.csv
 data/*.igc
-# กรณีมีไฟล์ config ส่วนตัว หรือไฟล์ผลลัพธ์
-results/
-*.csv
 
-# --- IDE & OS Specific ---
-.vscode/
-.idea/
+# --- LaTeX Temporary Files ---
+# ไฟล์พวกนี้จะเกิดขึ้นทุกครั้งที่ Compile xelatex
+*.aux
+*.log
+*.toc
+*.out
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+*.xdv
+
+# --- Fonts ---
+# หากคุณใช้ฟอนต์ที่มีลิขสิทธิ์ ไม่ควรนำขึ้น Git
+fonts/*.ttf
+fonts/*.otf
+
+# --- OS Specific ---
 .DS_Store
-# สำหรับ CachyOS/Linux
-*~
-*.swp
+Thumbs.db
 
-# --- Analysis & Notebooks ---
-.ipynb_checkpoints/
+# --- Docker ---
+.dockerignore

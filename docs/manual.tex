@@ -1,0 +1,106 @@
+\documentclass[14pt, a4paper]{extarticle} % ใช้ extarticle เพื่อรองรับ 14pt
+
+% --- Packages สำหรับภาษาไทย (XeLaTeX) ---
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\usepackage{setspace} % สำหรับปรับระยะห่างระหว่างบรรทัด
+
+\setmainlanguage{thai}
+\setotherlanguage{english}
+\setstretch{1.25} % เพิ่มระยะบรรทัดให้สระบน-ล่างไม่เบียดกัน
+
+% การตั้งค่าฟอนต์สารบรรณพร้อมขยายขนาด (Scale)
+\defaultfontfeatures{Scale=1.25} 
+\newfontfamily\thaifont{TH Sarabun New}[
+  UprightFont = *,
+  BoldFont = * Bold,
+  ItalicFont = * Italic,
+  BoldItalicFont = * Bold Italic
+]
+\newfontfamily\thaifontsf{TH Sarabun New}[UprightFont = *]
+\newfontfamily\thaifonttt{TH Sarabun New}[UprightFont = *]
+
+\setmainfont{TH Sarabun New}
+\setsansfont{TH Sarabun New}
+\setmonofont{TH Sarabun New}
+
+% --- Packages เสริม ---
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{titlesec}
+
+% ปรับ Margin ให้สมดุลกับตัวอักษรที่ใหญ่ขึ้น
+\geometry{top=0.8in, bottom=0.8in, left=0.8in, right=0.8in}
+\hypersetup{colorlinks=true, linkcolor=blue, urlcolor=cyan}
+
+% ปรับขนาดหัวข้อให้เด่นชัด
+\titleformat{\section}{\normalfont\Large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\large\bfseries}{\thesubsection}{1em}{}
+
+\title{\textbf{คู่มือระบบวิเคราะห์ผลการบิน RASAT/FAI \\ (Paramotor Triangle Scoring)}}
+\author{Competition Director Manual}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\newpage
+\tableofcontents
+\newpage
+
+\section{บทนำและวัตถุประสงค์}
+ระบบนี้พัฒนาขึ้นเพื่อเพิ่มความแม่นยำและความโปร่งใสในการตัดสินการแข่งขัน Paramotor ประเภท Triangle โดยใช้ระบบการประมวลผลแบบ Batch เพื่อลดภาระของกรรมการในการวิเคราะห์ไฟล์ IGC ทีละคน และเพื่อให้มั่นใจว่านักกีฬาจะได้รับระยะทางที่ยุติธรรมที่สุดตามกติกา FAI
+
+\section{แนวคิดหลักและการคิดคะแนน (Analysis Concepts)}
+
+\subsection{กติกา FAI Triangle 28\%}
+หัวใจสำคัญของกติกาคือสัดส่วนของสามเหลี่ยม:
+\begin{itemize}
+    \item \textbf{FAI Triangle (1.5x)}: ด้านที่สั้นที่สุดต้องมีระยะทางอย่างน้อย 28\% ของระยะทางรวม 3 ด้าน
+    \item \textbf{Flat Triangle (1.0x)}: หากไม่ผ่านเกณฑ์ 28\% จะถือเป็นสามเหลี่ยมทั่วไปและใช้ตัวคูณปกติ
+\end{itemize}
+
+
+
+\subsection{การตรวจสอบ Hidden Gates (CTE)}
+ระบบจะวางจุดตรวจสอบ (Gates) ไว้บนเส้นทางสามเหลี่ยมในทุก ๆ 1 กม. หากนักบินบินผ่านในรัศมีที่กำหนด (ปกติ 200 ม.) จะถือว่า \textbf{Scored}
+
+\section{ขั้นตอนการใช้งานสำหรับ CD}
+
+\subsection{การตั้งค่า Task (Configuration)}
+ก่อนเริ่มแข่ง CD ต้องแก้ไขพิกัดในไฟล์ \texttt{task\_config.json}:
+\begin{itemize}
+    \item \textbf{start\_point}: พิกัดจุดเริ่ม (Latitude, Longitude)
+    \item \textbf{finish\_point}: พิกัดจุดจบ (หากเป็น Closed Triangle ให้ใส่เหมือนจุดเริ่ม)
+    \item \textbf{sp\_radius\_meters}: รัศมีจุดเริ่ม/จบ (ปกติ 200 ม.)
+\end{itemize}
+
+\subsection{การประมวลผลไฟล์ IGC}
+\begin{enumerate}
+    \item รันสคริปต์ \texttt{setup.bat} (Windows) หรือ \texttt{setup.sh} (Mac/Linux)
+    \item เมื่อหน้า GUI ปรากฏ ให้กดปุ่ม \textbf{Select IGC Files}
+    \item เลือกไฟล์ IGC ของนักกีฬาทุกคนพร้อมกัน ระบบจะทำการ Copy ไฟล์ไปยังโฟลเดอร์ \texttt{igcFiles} อัตโนมัติ
+\end{enumerate}
+
+\section{การตีความผลลัพธ์ (Interpretation)}
+
+\subsection{ตารางสรุปคะแนน (CSV Result)}
+เปิดไฟล์ \texttt{competition\_results.csv} เพื่อดูอันดับ:
+\begin{itemize}
+    \item \textbf{Effective\_km}: ระยะทางสุทธิที่ใช้จัดลำดับ (รวมตัวคูณแล้ว)
+    \item \textbf{Status}: หากขึ้น \texttt{FAILED} แสดงว่าบินไม่เข้าจุดเริ่มหรือจุดจบ
+\end{itemize}
+
+\subsection{ภาพวิเคราะห์เส้นทาง (Visualization)}
+เปิดดูรูปในโฟลเดอร์ \texttt{results\_track\_analysis}:
+\begin{itemize}
+    \item \textbf{จุดสีเขียว}: ผ่าน Hidden Gate สำเร็จ
+    \item \textbf{จุดสีแดง}: พลาด Hidden Gate (บินหลุดแนวเส้นทาง)
+\end{itemize}
+
+
+
+\end{document}
