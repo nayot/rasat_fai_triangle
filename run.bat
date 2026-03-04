@@ -1,0 +1,1 @@
+uv run gui_app.py

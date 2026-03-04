@@ -22,5 +22,6 @@
     "constraints": {
         "min_fai_percent": 0.28
     },
-    "max_altitude_ft": 1500.0
+    "max_altitude_ft": 1500.0,
+    "min_altitude_ft": 500.0
 }
