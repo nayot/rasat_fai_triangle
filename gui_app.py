@@ -1,7 +1,6 @@
 import os
 import json
 import csv
-import shutil
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import matplotlib.pyplot as plt
@@ -9,264 +8,179 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.patches as patches
 import numpy as np
 
-# Import custom modules
 from src.igc_parser import IGCParser
 from src.scorer import RASATScorer
+from src.geo_logic import GeoLogic
 
 class RASATGui:
     def __init__(self, root):
         self.root = root
-        self.root.title("RASAT/FAI Stand-alone Analyzer v1.1")
-        self.root.geometry("1200x850") 
+        self.root.title("RASAT/FAI Analyzer v1.2")
+        self.root.geometry("1200x950")
+        self.copyright_text = "Copyright © Nayot Kurukitkoson (nayot@ieee.org)"
+        self.geo = GeoLogic()
         
         self.config_path = "task_config.json"
         self.load_config()
         
         self.result_dir = tk.StringVar(value=os.path.abspath("results_track_analysis"))
-        self.preview_mode_var = tk.BooleanVar(value=False) 
-        
+        self.preview_mode_var = tk.BooleanVar(value=False)
+        self._set_matplotlib_font()
         self._setup_ui()
+
+    def _set_matplotlib_font(self):
+        plt.rcParams.update({'font.size': 7})
+        for f in ['Tahoma', 'Ayuthaya', 'Thonburi', 'Sans-serif']:
+            try:
+                plt.rcParams['font.family'] = f
+                break
+            except: continue
 
     def load_config(self):
         if os.path.exists(self.config_path):
             try:
                 with open(self.config_path, "r", encoding='utf-8') as f:
                     self.config = json.load(f)
-            except:
-                self._set_default_config()
-        else:
-            self._set_default_config()
+            except: self._set_default_config()
+        else: self._set_default_config()
 
     def _set_default_config(self):
         self.config = {
             "task_name": "New Task",
-            "coordinates": {
-                "start_point": [14.422020, 100.499577],
-                "finish_point": [14.422020, 100.499577],
-                "sp_radius_meters": 200,
-                "fp_radius_meters": 200
-            },
-            "scoring_params": {
-                "hidden_gate_interval_km": 1.0,
-                "hidden_gate_radius_meters": 200,
-                "fai_multiplier": 1.5,
-                "flat_multiplier": 1.0
-            }
+            "coordinates": {"start_point": [14.422, 100.5], "finish_point": [14.422, 100.5], "sp_radius_meters": 200, "fp_radius_meters": 200},
+            "scoring_params": {"hidden_gate_interval_km": 1.0, "hidden_gate_radius_meters": 200, "fai_multiplier": 1.5, "flat_multiplier": 1.0},
+            "max_altitude_ft": 3000
         }
 
     def _setup_ui(self):
-        # Header Section
-        header_frame = ttk.Frame(self.root)
-        header_frame.pack(fill=tk.X, padx=15, pady=10)
-        ttk.Label(header_frame, text="RASAT/FAI Triangle Analyzer", font=("Arial", 16, "bold")).pack(side=tk.LEFT)
-        ttk.Label(header_frame, text="v1.1", font=("Arial", 10, "italic"), foreground="gray").pack(side=tk.LEFT, padx=10, pady=5)
-
-        paned = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
-        paned.pack(fill=tk.BOTH, expand=True)
-
-        # --- ฝั่งซ้าย: Control Panel (50%) ---
-        left_frame = ttk.Frame(paned, padding=15)
-        paned.add(left_frame, weight=1)
-
-        # Config Editor
-        conf_frame = ttk.LabelFrame(left_frame, text=" Task Configuration ", padding=10)
-        conf_frame.pack(fill=tk.X, pady=5)
-
-        ttk.Label(conf_frame, text="Task Name:").grid(row=0, column=0, sticky=tk.W)
-        self.ent_task_name = ttk.Entry(conf_frame, width=25)
-        self.ent_task_name.insert(0, self.config['task_name'])
-        self.ent_task_name.grid(row=0, column=1, columnspan=2, pady=2)
-
-        ttk.Label(conf_frame, text="Start Lat:").grid(row=1, column=0, sticky=tk.W)
-        self.ent_sp_lat = ttk.Entry(conf_frame, width=15)
-        self.ent_sp_lat.insert(0, self.config['coordinates']['start_point'][0])
-        self.ent_sp_lat.grid(row=1, column=1, pady=2)
-
-        ttk.Label(conf_frame, text="Start Lon:").grid(row=2, column=0, sticky=tk.W)
-        self.ent_sp_lon = ttk.Entry(conf_frame, width=15)
-        self.ent_sp_lon.insert(0, self.config['coordinates']['start_point'][1])
-        self.ent_sp_lon.grid(row=2, column=1, pady=2)
-
-        ttk.Label(conf_frame, text="Radius (m):").grid(row=3, column=0, sticky=tk.W)
-        self.ent_sp_r = ttk.Entry(conf_frame, width=15)
-        self.ent_sp_r.insert(0, self.config['coordinates']['sp_radius_meters'])
-        self.ent_sp_r.grid(row=3, column=1, pady=2)
-
-        ttk.Button(conf_frame, text="Save & Update Config", command=self.update_config_from_ui).grid(row=4, column=0, columnspan=3, pady=10)
-
-        # Settings
-        settings_frame = ttk.LabelFrame(left_frame, text=" Execution Settings ", padding=10)
-        settings_frame.pack(fill=tk.X, pady=5)
+        # --- UI Layout ---
+        header = ttk.Frame(self.root); header.pack(fill=tk.X, padx=15, pady=5)
+        ttk.Label(header, text="RASAT/FAI Analyzer v1.2", font=("Arial", 16, "bold")).pack(side=tk.LEFT)
         
-        self.chk_preview = ttk.Checkbutton(settings_frame, text="Preview Mode (No Files Saved)", variable=self.preview_mode_var)
-        self.chk_preview.pack(anchor=tk.W, pady=5)
+        paned = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL); paned.pack(fill=tk.BOTH, expand=True)
+        left = ttk.Frame(paned, padding=10); paned.add(left, weight=1)
+        
+        conf = ttk.LabelFrame(left, text=" Task Config "); conf.pack(fill=tk.X, pady=5)
+        ttk.Label(conf, text="Lat:").grid(row=0, column=0); self.ent_lat = ttk.Entry(conf); self.ent_lat.insert(0, self.config['coordinates']['start_point'][0]); self.ent_lat.grid(row=0, column=1)
+        ttk.Label(conf, text="Lon:").grid(row=1, column=0); self.ent_lon = ttk.Entry(conf); self.ent_lon.insert(0, self.config['coordinates']['start_point'][1]); self.ent_lon.grid(row=1, column=1)
+        ttk.Label(conf, text="Max Alt(ft):").grid(row=2, column=0); self.ent_max_alt = ttk.Entry(conf); self.ent_max_alt.insert(0, self.config.get("max_altitude_ft", 3000)); self.ent_max_alt.grid(row=2, column=1)
+        ttk.Button(conf, text="Update Config", command=self.update_config_from_ui).grid(row=3, columnspan=2, pady=5)
 
-        ttk.Label(settings_frame, text="Output Folder:").pack(anchor=tk.W)
-        path_sub = ttk.Frame(settings_frame)
-        path_sub.pack(fill=tk.X)
-        ttk.Entry(path_sub, textvariable=self.result_dir).pack(side=tk.LEFT, fill=tk.X, expand=True)
-        ttk.Button(path_sub, text="...", width=3, command=self.browse_folder).pack(side=tk.LEFT)
+        sett = ttk.LabelFrame(left, text=" Output Settings "); sett.pack(fill=tk.X, pady=5)
+        ttk.Checkbutton(sett, text="Preview Mode", variable=self.preview_mode_var).pack(anchor=tk.W)
+        ttk.Entry(sett, textvariable=self.result_dir).pack(fill=tk.X, padx=5, pady=5)
 
-        # Main Button (Black Text)
-        self.btn_process = tk.Button(left_frame, text="SELECT IGC & START ANALYSIS", 
-                                     command=self.process_files, 
-                                     bg="#4CAF50", fg="black", 
-                                     font=("Arial", 12, "bold"), height=3)
+        self.btn_process = tk.Button(left, text="ANALYZE IGC FILES", command=self.process_files, bg="#4CAF50", font=("Arial", 12, "bold"), height=2)
         self.btn_process.pack(fill=tk.X, pady=20)
-        
-        self.status_label = ttk.Label(left_frame, text="Status: Ready", foreground="blue")
-        self.status_label.pack(pady=5)
+        self.status_label = ttk.Label(left, text="Ready", foreground="green"); self.status_label.pack()
 
-        # --- ฝั่งขวา: Visual Analysis (50%) ---
-        right_frame = ttk.LabelFrame(paned, text=" Visual Analysis ", padding=5)
-        paned.add(right_frame, weight=1)
-
-        # Font Scale Reduction
-        plt.rcParams.update({'font.size': 5.5, 'axes.labelsize': 6, 'axes.titlesize': 7})
-        
-        self.fig, self.ax = plt.subplots(figsize=(6, 6))
-        self.canvas = FigureCanvasTkAgg(self.fig, master=right_frame)
-        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-
-    def browse_folder(self):
-        folder = filedialog.askdirectory()
-        if folder: self.result_dir.set(os.path.abspath(folder))
+        # --- Plot Area (สร้าง Axes ไว้รอเลยเพื่อลดการกระพริบ) ---
+        right = ttk.LabelFrame(paned, text=" Analysis Plot "); paned.add(right, weight=3)
+        self.fig, (self.ax_map, self.ax_alt) = plt.subplots(2, 1, figsize=(8, 10), constrained_layout=True, gridspec_kw={'height_ratios': [2.5, 1]})
+        self.canvas = FigureCanvasTkAgg(self.fig, master=right); self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
     def update_config_from_ui(self):
         try:
-            self.config['task_name'] = self.ent_task_name.get()
-            lat, lon = float(self.ent_sp_lat.get()), float(self.ent_sp_lon.get())
-            self.config['coordinates']['start_point'] = [lat, lon]
-            self.config['coordinates']['finish_point'] = [lat, lon]
-            self.config['coordinates']['sp_radius_meters'] = int(self.ent_sp_r.get())
-            self.config['coordinates']['fp_radius_meters'] = int(self.ent_sp_r.get())
-            
-            with open(self.config_path, "w", encoding='utf-8') as f:
-                json.dump(self.config, f, indent=4)
-            messagebox.showinfo("Success", "Configuration saved!")
-        except Exception as e:
-            messagebox.showerror("Error", f"Invalid input: {e}")
+            self.config['coordinates']['start_point'] = [float(self.ent_lat.get()), float(self.ent_lon.get())]
+            self.config['coordinates']['finish_point'] = self.config['coordinates']['start_point']
+            self.config['max_altitude_ft'] = float(self.ent_max_alt.get())
+            with open(self.config_path, "w", encoding='utf-8') as f: json.dump(self.config, f, indent=4)
+            messagebox.showinfo("Success", "Config Updated")
+        except: messagebox.showerror("Error", "Invalid values")
 
     def process_files(self):
-        file_paths = filedialog.askopenfilenames(filetypes=[("IGC files", "*.igc")])
-        if not file_paths: return
-
-        is_preview = self.preview_mode_var.get()
-        if not is_preview:
-            os.makedirs(self.result_dir.get(), exist_ok=True)
-            
-        summary_data = []
+        paths = filedialog.askopenfilenames(filetypes=[("IGC files", "*.igc")])
+        if not paths: return
         
-        for i, path in enumerate(file_paths):
+        is_p = self.preview_mode_var.get()
+        if not is_p: os.makedirs(self.result_dir.get(), exist_ok=True)
+        
+        summary_list = []
+        for path in paths:
             try:
-                parser = IGCParser(path)
-                parsed_data = parser.parse()
-                track = parsed_data[1] if isinstance(parsed_data, tuple) else parsed_data
-                pilot_name = parsed_data[0] if isinstance(parsed_data, tuple) else os.path.basename(path)
-
+                # --- จุดแก้ไข: ดึงชื่อนักบินจากชื่อไฟล์ (ไม่รวมนามสกุล) ---
+                pilot_filename = os.path.splitext(os.path.basename(path))[0]
+                
+                # ใช้ Parser ดึงแค่พิกัด Track (ข้ามชื่อนักบินในไฟล์)
+                _, track = IGCParser(path).parse()
+                if not track: continue
+                
                 res = RASATScorer(track, self.config).calculate_results()
                 
-                save_path = os.path.join(self.result_dir.get(), f"{pilot_name}_analysis.png") if not is_preview else None
-                self._draw_plot(track, res, pilot_name, save_path)
-
-                summary_data.append({
-                    "Pilot": pilot_name, "Status": res["status_message"],
-                    "Triangle_km": res["triangle_km"], "Effective_km": res["effective_km"],
-                    "Type": "FAI" if res["is_fai"] else "Flat", 
-                    "Scored_Gates": res['scored_gates'],
-                    "Total_Gates": res['total_gates']
-                })
+                h, r = divmod(res.get('duration_sec', 0), 3600); m, s = divmod(r, 60)
+                dur_str = f"{int(h):02}:{int(m):02}:{s:04.1f}"
                 
-                self.status_label.config(text=f"Processed: {i+1}/{len(file_paths)}")
+                # บันทึกรูปภาพโดยใช้ชื่อไฟล์เป็นชื่อนักบิน
+                save_path = None if is_p else os.path.join(self.result_dir.get(), f"{pilot_filename}_analysis.png")
+                self._draw_plot(track, res, pilot_filename, dur_str, save_path)
+                
+                summary_list.append({
+                    "Pilot": pilot_filename,
+                    "Status": res.get("status_message"),
+                    "Triangle_km": round(res.get("triangle_km", 0), 2),
+                    "Effective_km": round(res.get("effective_km", 0), 2),
+                    "Duration": dur_str,
+                    "Scored_Gates": res.get("scored_gates", 0),
+                    "Total_Gates": res.get("total_gates", 0),
+                    "Type": "FAI" if res.get("is_fai") else "Flat"
+                })
+                self.status_label.config(text=f"Processed: {pilot_filename}")
                 self.root.update()
-
-            except Exception as e:
+            except Exception as e: 
                 print(f"Error processing {path}: {e}")
 
-        if summary_data and not is_preview:
-            csv_path = os.path.join(self.result_dir.get(), "competition_results.csv")
-            with open(csv_path, 'w', newline='', encoding='utf-8-sig') as f:
-                writer = csv.DictWriter(f, fieldnames=summary_data[0].keys())
-                writer.writeheader()
-                writer.writerows(summary_data)
-            messagebox.showinfo("Done", f"Results saved in:\n{csv_path}")
-        elif summary_data:
-            messagebox.showinfo("Done", "Analysis Complete (Preview Mode)")
-
-    def _draw_plot(self, track_points, res, pilot, save_to_file=None):
-        self.ax.clear()
-        f_size = 5.5 
+        if summary_list and not is_p:
+            summary_list.sort(key=lambda x: x['Effective_km'], reverse=True)
+            csv_p = os.path.join(self.result_dir.get(), "competition_results_v139.csv")
+            with open(csv_p, 'w', newline='', encoding='utf-8-sig') as f:
+                w = csv.DictWriter(f, fieldnames=summary_list[0].keys()); w.writeheader(); w.writerows(summary_list)
+            messagebox.showinfo("Done", "CSV Leaderboard Generated using Filenames!")
+            
+    def _draw_plot(self, track, res, pilot, dur_str, save_p):
+        self.ax_map.clear(); self.ax_alt.clear()
         
-        # Axis Decimals
-        self.ax.xaxis.set_major_formatter(plt.FormatStrFormatter('%.4f'))
-        self.ax.yaxis.set_major_formatter(plt.FormatStrFormatter('%.4f'))
-        self.ax.tick_params(axis='both', labelsize=f_size)
+        lats, lons = zip(*[p[:2] for p in track])
+        alts_ft = [p[2] * 3.28084 for p in track]
         
-        # Track (Dark Blue)
-        lats, lons = zip(*[p[:2] for p in track_points])
-        self.ax.plot(lons, lats, color='darkblue', alpha=0.6, linewidth=0.7, zorder=1)
-
-        # Radius Calculations
-        deg_m = 1.0 / 111000.0
-        sp = self.config['coordinates']['start_point']
-        fp = self.config['coordinates']['finish_point']
-        sp_r = self.config['coordinates']['sp_radius_meters'] * deg_m
-        fp_r = self.config['coordinates']['fp_radius_meters'] * deg_m
-        gate_r = self.config['scoring_params']['hidden_gate_radius_meters'] * deg_m
-
-        # Start/Finish Cylinders
-        self.ax.add_patch(patches.Circle((sp[1], sp[0]), sp_r, color='green', fill=True, alpha=0.1, zorder=2))
-        self.ax.add_patch(patches.Circle((sp[1], sp[0]), sp_r, color='green', fill=False, linestyle='--', linewidth=1, zorder=3))
-        self.ax.plot(sp[1], sp[0], 'go', markersize=4)
-
-        self.ax.add_patch(patches.Circle((fp[1], fp[0]), fp_r, color='blue', fill=True, alpha=0.1, zorder=2))
-        self.ax.add_patch(patches.Circle((fp[1], fp[0]), fp_r, color='blue', fill=False, linestyle='--', linewidth=1, zorder=3))
-        self.ax.plot(fp[1], fp[0], 'bo', markersize=4)
-
-        # Hidden Gates - Color Coded
+        # --- คำนวณเวลา (นาที) สำหรับแกน X ---
+        # สมมติว่า IGC บันทึกทุก 1 วินาที (หากไม่ใช่ โปรแกรมจะคำนวณจากจำนวนจุด)
+        times_min = np.arange(len(track)) / 60.0 
+        
+        # 1. Map Plot (เหมือนเดิม)
+        self.ax_map.plot(lons, lats, color='blue', alpha=0.3, linewidth=0.7)
         if 'gate_coords' in res:
-            track_np = np.array([p[:2] for p in track_points])
+            r_km = self.config['scoring_params']['hidden_gate_radius_meters'] / 1000.0
             for g in res['gate_coords']:
-                dist = np.sqrt(np.sum((track_np - np.array(g))**2, axis=1))
-                is_passed = np.any(dist <= gate_r)
-                c = 'limegreen' if is_passed else 'red'
-                self.ax.add_patch(patches.Circle((g[1], g[0]), gate_r, color=c, fill=False, alpha=0.4, linewidth=0.6, zorder=4))
-                self.ax.plot(g[1], g[0], '.', color=c, markersize=1, zorder=5)
+                passed = any(self.geo.calculate_distance(p[:2], g) <= r_km for p in track)
+                c = 'limegreen' if passed else 'red'
+                self.ax_map.add_patch(patches.Circle((g[1], g[0]), r_km/111, color=c, alpha=0.2))
+                self.ax_map.scatter(g[1], g[0], color=c, s=12, zorder=5)
 
-        # Triangle
-        if res['is_valid']:
-            v = res['vertices']
-            v_lats = [v[0][0], v[1][0], v[2][0], fp[0]]
-            v_lons = [v[0][1], v[1][1], v[2][1], fp[1]]
-            self.ax.plot(v_lons, v_lats, color='darkorange', linewidth=1.5, marker='^', markersize=3, zorder=10)
+        if res.get('is_valid'):
+            v = list(res['vertices']); p = v + [v[0]]; vlats, vlons = zip(*p)
+            self.ax_map.plot(vlons, vlats, color='darkorange', linewidth=2, zorder=10)
 
-        self.ax.set_aspect('equal')
-        self.ax.grid(True, linestyle=':', alpha=0.5)
+        self.ax_map.set_aspect('equal', adjustable='datalim'); self.ax_map.grid(True, alpha=0.15)
 
-        # Summary Info
-        summary_text = (
-            f"Pilot: {pilot} | Status: {res['status_message']} | Type: {'FAI' if res['is_fai'] else 'Flat'}\n"
-            f"Triangle Distance: {res['triangle_km']:.2f} km | Multiplier: x{res['multiplier']}\n"
-            f"Effective Distance: {res['effective_km']:.2f} km | Gates Scored: {res['scored_gates']} / {res['total_gates']}"
-        )
+        # 2. Altitude Plot (เปลี่ยนแกน X เป็น Time)
+        self.ax_alt.plot(times_min, alts_ft, color='teal', linewidth=1)
+        self.ax_alt.fill_between(times_min, alts_ft, color='teal', alpha=0.1)
+        
+        max_limit = float(self.config.get("max_altitude_ft", 3000))
+        self.ax_alt.axhline(y=max_limit, color='red', linestyle='--', linewidth=1, label=f"Limit {int(max_limit)}ft")
+        
+        self.ax_alt.set_ylim(0, max(max_limit, max(alts_ft) if alts_ft else 0) * 1.2)
+        self.ax_alt.set_ylabel("Alt (ft)")
+        self.ax_alt.set_xlabel("Time (Minutes)", fontsize=7) # ระบุหน่วยเป็นนาที
+        self.ax_alt.grid(True, alpha=0.2)
 
-        if not save_to_file:
-            self.ax.set_title(f"Preview: {pilot}", fontsize=f_size + 2)
-            self.ax.text(0.5, -0.15, summary_text, ha='center', transform=self.ax.transAxes, 
-                         fontsize=f_size, bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-            self.fig.tight_layout()
-            self.canvas.draw()
-        else:
-            # Special formatting for saved files
-            self.fig.subplots_adjust(bottom=0.22)
-            self.ax.set_title(f"RASAT Analysis - {pilot}", fontsize=f_size + 3)
-            self.fig.text(0.5, 0.06, summary_text, ha='center', fontsize=f_size + 1, fontweight='bold',
-                         bbox=dict(boxstyle='round', facecolor='whitesmoke', edgecolor='gray'), fontfamily='monospace')
-            self.fig.savefig(save_to_file, dpi=200, bbox_inches='tight')
-            # Reset layout after save to prevent UI distortion
-            self.fig.subplots_adjust(bottom=0.1)
+        # Summary Text (Small Font 5.5)
+        title = (f"Pilot: {pilot} | Dist: {res['triangle_km']:.2f} km | Eff: {res['effective_km']:.2f} km\n"
+                 f"Time: {dur_str} | Gates: {res['scored_gates']}/{res['total_gates']}")
+        self.fig.suptitle(title, fontsize=5.5, fontweight='bold', y=0.98)
+
+        if save_p: self.fig.savefig(save_p, dpi=200, bbox_inches='tight')
+        self.canvas.draw_idle()
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = RASATGui(root)
-    root.mainloop()
+    root = tk.Tk(); app = RASATGui(root); root.mainloop()
